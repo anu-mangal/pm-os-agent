@@ -52,6 +52,10 @@ MAX_QUEUE_ITEMS = int(os.environ.get("CORTEX_MAX_QUEUE_ITEMS", "10"))
 # Rough $ per 1M tokens for your chosen model, set to match its pricing.
 PRICE_IN = float(os.environ.get("CORTEX_PRICE_IN_PER_M", "0.15"))
 PRICE_OUT = float(os.environ.get("CORTEX_PRICE_OUT_PER_M", "0.60"))
+# The critic can run on a stronger model than the drafter; defaults to the same one.
+CRITIC_MODEL = os.environ.get("CORTEX_CRITIC_MODEL", MODEL)
+CRITIC_PRICE_IN = float(os.environ.get("CORTEX_CRITIC_PRICE_IN_PER_M", PRICE_IN))
+CRITIC_PRICE_OUT = float(os.environ.get("CORTEX_CRITIC_PRICE_OUT_PER_M", PRICE_OUT))
 
 TOOL_SCHEMAS = [
     {"type": "function", "function": {
@@ -188,10 +192,10 @@ def run(which: str = "happy") -> None:
         print(f"\n[step {step}] PROPOSED OUTPUT:\n{proposed}")
 
         banner("CRITIC, independent validation")
-        verdict = review(client, MODEL, proposed, "\n".join(source_log))
+        verdict = review(client, CRITIC_MODEL, proposed, "\n".join(source_log))
         # Estimate critic spend too.
-        bounds.cost += (verdict["_usage"]["prompt"] * PRICE_IN
-                        + verdict["_usage"]["completion"] * PRICE_OUT) / 1_000_000
+        bounds.cost += (verdict["_usage"]["prompt"] * CRITIC_PRICE_IN
+                        + verdict["_usage"]["completion"] * CRITIC_PRICE_OUT) / 1_000_000
         print(json.dumps({k: v for k, v in verdict.items() if k != "_usage"}, indent=2))
 
         if verdict["verdict"] == "pass":
