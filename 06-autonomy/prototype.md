@@ -23,7 +23,7 @@ Real screenshots of *your* Cortex running. These are the `00-build/CORTEX-ANATOM
 |---|---|---|---|
 | 1 | ![Happy path](screenshots/m2-happy-path.png) | Happy path: drafted update, critic passed, stopped at HITL checkpoint, nothing posted | M2 |
 | 1b | ![Stuck exit](screenshots/m2-stuck-exit.png) | Stuck exit: Cortex can't find P-HALO, drifts to the wrong project, critic rejects it, then the 3-try stuck rule halts and escalates. Nothing posted | M2 |
-| 2 | _[img]_ | the critic rejecting a bad draft (revise/block) | M3 |
+| 2 | ![Critic rejects](screenshots/m2-stuck-exit.png) | Critic rejects a bad draft: Cortex wrote the update for the wrong project (P-NORTH instead of P-HALO), the critic failed it with reasons and sent it back for revision. Same run as 1b | M3 |
 | 3 | _[img]_ | a grounded update citing pulled activity + a caught hallucination | M4 |
 | 4 | _[img]_ | jailbreak refused + escalated | M5 |
 | 5 | _[img]_ | an iteration/cost/queue bound halting a runaway | M5 |
