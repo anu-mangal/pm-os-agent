@@ -49,6 +49,8 @@ MAX_ITERATIONS = int(os.environ.get("CORTEX_MAX_ITERATIONS", "8"))
 MAX_REVISIONS = int(os.environ.get("CORTEX_MAX_REVISIONS", "2"))
 COST_CAP_USD = float(os.environ.get("CORTEX_COST_CAP_USD", "0.50"))
 MAX_QUEUE_ITEMS = int(os.environ.get("CORTEX_MAX_QUEUE_ITEMS", "10"))
+# Loop Spec stuck exit: this many failed/empty tool results -> stop and escalate.
+MAX_TOOL_FAILURES = int(os.environ.get("CORTEX_MAX_TOOL_FAILURES", "3"))
 # Rough $ per 1M tokens for your chosen model, set to match its pricing.
 PRICE_IN = float(os.environ.get("CORTEX_PRICE_IN_PER_M", "0.15"))
 PRICE_OUT = float(os.environ.get("CORTEX_PRICE_OUT_PER_M", "0.60"))
@@ -105,6 +107,11 @@ class Bounds:
         return self.cost >= COST_CAP_USD
 
 
+def tool_failed(result) -> bool:
+    """A tool call counts toward the stuck exit if it errored or came back empty."""
+    return not result or (isinstance(result, dict) and "error" in result)
+
+
 OUTPUT_DIR = Path(__file__).parent / "run-output"
 
 
@@ -121,8 +128,14 @@ def emit_deliverable(which: str, draft: str, *, accepted: bool,
     Runs on every exit: an accepted pass prints the FINAL update; a bound trip or
     escalation prints the LAST draft it managed to write plus why it was held.
     """
-    banner("FINAL STATUS UPDATE (draft, validator-approved, NOT posted)" if accepted
-           else "LAST DRAFT (held, NOT posted, escalated to a human)")
+    escalated = draft.lstrip().upper().startswith("ESCALATE")
+    if accepted and escalated:
+        title = "ESCALATED TO YOU (Cortex stopped and needs your call, NOT posted)"
+    elif accepted:
+        title = "FINAL STATUS UPDATE (draft, validator-approved, NOT posted)"
+    else:
+        title = "LAST DRAFT (held, NOT posted, escalated to a human)"
+    banner(title)
     if draft.strip():
         print(draft.rstrip())
     else:
@@ -159,6 +172,7 @@ def run(which: str = "happy") -> None:
     source_log: list[str] = [task["body"]]
     revisions = 0
     last_draft = ""
+    tool_failures: list[str] = []
 
     for step in range(1, MAX_ITERATIONS + 1):
         if bounds.over_cap():
@@ -184,6 +198,16 @@ def run(which: str = "happy") -> None:
                 print(f"          -> {json.dumps(result)[:300]}")
                 messages.append({"role": "tool", "tool_call_id": call.id,
                                  "content": json.dumps(result)})
+                if tool_failed(result):
+                    tool_failures.append(f"{fn}({args})")
+            if len(tool_failures) >= MAX_TOOL_FAILURES:
+                reason = (f"stuck: {len(tool_failures)} failed/empty tool results "
+                          f"(limit {MAX_TOOL_FAILURES}). Missing: "
+                          + "; ".join(tool_failures))
+                banner(f"STUCK, {reason}. Halting and escalating to a human.")
+                emit_deliverable(which, last_draft, accepted=False,
+                                 reason=reason, cost=bounds.cost)
+                return
             continue
 
         # No tool calls => Cortex produced a proposed output. Validate it.
@@ -199,9 +223,14 @@ def run(which: str = "happy") -> None:
         print(json.dumps({k: v for k, v in verdict.items() if k != "_usage"}, indent=2))
 
         if verdict["verdict"] == "pass":
-            banner(f"HITL CHECKPOINT, status update + any proposed stories queued for "
-                   f"your review. Nothing posted, no commitments made. "
-                   f"Run cost ≈ ${bounds.cost:.4f}")
+            if proposed.lstrip().upper().startswith("ESCALATE"):
+                banner(f"HITL CHECKPOINT, Cortex escalated: it needs your decision "
+                       f"before going further. Nothing posted, no commitments made. "
+                       f"Run cost ≈ ${bounds.cost:.4f}")
+            else:
+                banner(f"HITL CHECKPOINT, status update + any proposed stories queued "
+                       f"for your review. Nothing posted, no commitments made. "
+                       f"Run cost ≈ ${bounds.cost:.4f}")
             emit_deliverable(which, proposed, accepted=True,
                              reason="validator passed", cost=bounds.cost)
             return

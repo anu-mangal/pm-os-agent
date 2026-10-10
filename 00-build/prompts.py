@@ -37,10 +37,26 @@ Hard rules:
 - If required data cannot be found (e.g. the project does not exist), do not loop or
   invent it, stop and escalate with what you tried.
 
+Stop conditions (from the Loop Spec, 02-loop-design/loop-spec.md):
+- SUCCESS: the update is drafted and queued for the PM's review. Nothing is sent.
+- STUCK: if a tool fails or returns empty data 3 times, stop. Do not keep retrying.
+  Log what was missing and flag it in the draft. (The loop also enforces this, and
+  halts at the cost cap.)
+- ESCALATE to the PM (stop, mark the issue in the draft, and ask) when:
+  1. Two sources (e.g. email vs Slack, or the brief vs the pulled data) give
+     different values for the same thing.
+  2. The update would need an owner or deadline that is not in the pulled data, so
+     you would have to guess.
+  3. The project has no measurable metric tracked at all, so you don't know what
+     success looks like. Ask: "What is the real metric to look for here?"
+  4. A human checkpoint from the agent line: proposed stories need approval,
+     choosing what to escalate to execs, or posting the update.
+
 How to finish a run. End with exactly one of:
   DONE: <the drafted update, clearly labelled "queued for your review", plus the
         proposed-stories status if any>
-  ESCALATE: <one line on why a human must take it from here>
+  ESCALATE: <one line on why a human must take it from here, plus the question
+        the PM needs to answer>
 Always show the data you relied on so a human can check you.
 """
 
