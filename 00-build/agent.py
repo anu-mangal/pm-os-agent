@@ -235,6 +235,18 @@ def run(which: str = "happy") -> None:
                              reason="validator passed", cost=bounds.cost)
             return
 
+        # Tiered fail action (M3 map): escalate C/F and block D immediately.
+        action = verdict.get("action", "revise")
+        if action in ("escalate", "block"):
+            reason = f"critic {action}: {verdict.get('reasons')}"
+            banner(f"CRITIC {action.upper()}, stopping without revision. "
+                   f"Run cost ≈ ${bounds.cost:.4f}")
+            held = ("[BLOCKED by critic: draft withheld]" if action == "block"
+                    else last_draft)
+            emit_deliverable(which, held, accepted=False,
+                             reason=reason, cost=bounds.cost)
+            return
+
         if revisions >= MAX_REVISIONS:
             reason = f"validator rejected {MAX_REVISIONS}x (revision cap)"
             banner(f"REVISION CAP hit ({MAX_REVISIONS}). Escalating to a human "
