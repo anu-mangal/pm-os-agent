@@ -222,6 +222,14 @@ def run(which: str = "happy") -> None:
                         + verdict["_usage"]["completion"] * CRITIC_PRICE_OUT) / 1_000_000
         print(json.dumps({k: v for k, v in verdict.items() if k != "_usage"}, indent=2))
 
+        # Critic spend counts toward the cap too (gap found in M5 Step 3).
+        if bounds.over_cap():
+            reason = f"cost cap ${COST_CAP_USD} hit at ${bounds.cost:.4f} (after critic)"
+            banner(f"BOUND TRIPPED, {reason}. Halting and escalating to a human.")
+            emit_deliverable(which, last_draft, accepted=False,
+                             reason=reason, cost=bounds.cost)
+            return
+
         if verdict["verdict"] == "pass":
             if proposed.lstrip().upper().startswith("ESCALATE"):
                 banner(f"HITL CHECKPOINT, Cortex escalated: it needs your decision "
