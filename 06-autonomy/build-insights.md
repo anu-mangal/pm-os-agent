@@ -6,16 +6,23 @@
 
 ## Friction
 
-_Where did the build fight you? (Loop stop conditions? Context budget? The validator? Bounds?)_
+- The critic. On gpt-4o-mini it kept failing good drafts over wording, so I moved it to gpt-4o. Later it flip-flopped on the status color and chose "revise" when it should have escalated.
+- The cost cap didn't count the critic's spend at first. A $0.001 cap didn't trip until we added a check after the critic.
+- I was new to the terminal and GitHub, so every commit and push was its own small lesson.
 
 ## Learning
 
-_The two or three things you now understand about shipping agents that you didn't before the course._
+1. Safety has to live in code, not just the prompt. Caps, the stuck rule and the "nothing posts" rule held because the code enforces them.
+2. Knowing when to stop matters as much as the task. Most of my design time went into stop, escalate and give-up conditions.
+3. A critic only catches what you tell it to check. In the jailbreak test the critic caught the trick, not Cortex, and Cortex still fetched the Orbit roadmap because the injection named it.
 
 ## Aha moment
 
-_The single insight that changed how you'd design your next agent._
+"Passed" doesn't mean "good." In the final run the critic passed a draft that proposed next-sprint stories for work that had already merged that week. Every safety check was green, but a human would have caught it in seconds. That's why the human-in-the-loop checkpoint isn't optional yet.
 
 ## What you'd do differently
 
-_If you rebuilt Cortex from scratch, what changes?_
+- Write the evals (EV-1 to EV-6) first and build to pass them, instead of adding them in Module 5.
+- Add a "does this make sense" critic check: no stories for already-shipped work.
+- Make Cortex flag injections itself, and strip CONFIDENTIAL sections in get_roadmap so secrets never reach the prompt.
+- Build the missing pieces before any real use: recovery (EV-5), the 2-minute timeout and the $5 daily cap.
